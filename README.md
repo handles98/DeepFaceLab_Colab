@@ -18,7 +18,7 @@ sudo apt-get install --no-install-recommends nvidia-driver-418
 ```
 **Reboot your system.**
 
-## Easy Method
+## Easy Method; No DLIB CUDA support
 
 ### Install Anaconda3
 Download the installer [https://www.anaconda.com/distribution/#linux](https://www.anaconda.com/distribution/#linux). Install Anaconda3 and choose the defaults. You will also need to add conda to your path so you can complete the final steps.
@@ -39,15 +39,22 @@ For this method, we will create an Ubuntu 16.04 container on your system. In ord
 ```bash
 sudo snap install lxd
 sudo lxd init
+sudo adduser "$USER" lxd
 ```
+**Reboot or logout so the new group membership can take effect**
 
 After you have finished installing and configuring lxd to your needs. We will now need to create the container. 
 
 ```bash
-lxc launch ubuntu:16.04 deepfacelab
-lxc stop deepfacelab
-lxc config device add deepfacelab gpu gpu
-lxc start deepfacelab
+echo "root:$UID:1" | sudo tee -a /etc/subuid /etc/subgid #Only run once and never again!
+wget https://blog.simos.info/wp-content/uploads/2018/06/lxdguiprofile.txt #Thanks to Simos Xenitellis for his GUI LXC profile!
+lxc profile create gui
+cat lxdguiprofile.txt | lxc profile edit gui
+lxc launch --profile default --profile gui ubuntu:16.04 deepfacelab
+# Wait 30s so the environment can fully setup without issue.
+# Logging in before the inital setup is done can cause problems.
+# The next command will fix the DeepFaceLab GUI to allow it to show up correctly.
+lxc exec deepfacelab -- sh -c "echo 'export QT_X11_NO_MITSHM=1' >> /home/ubuntu/.bashrc"
 ```
 
 You can now access your container at any time with the following command
@@ -55,5 +62,6 @@ You can now access your container at any time with the following command
 lxc exec deepfacelab -- su ubuntu
 ```
 
-While in the container, run the installation instructions for Ubuntu 16.04 and you will have created an identical environment.
+While in the container, change to your home directory with ``cd ~\`` and then run the installation instructions for Ubuntu 16.04 and you will have created an identical environment.
+
 **WARNING: Make sure you install the same video driver in the container as installed in the host!**
