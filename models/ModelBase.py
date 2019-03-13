@@ -25,10 +25,7 @@ class ModelBase(object):
         device_args['force_gpu_idx'] = device_args.get('force_gpu_idx',-1)
         
         if device_args['force_gpu_idx'] == -1:
-            try: 
-                idxs_names_list = nnlib.device.getValidDevicesIdxsWithNamesList()
-            except:
-                idxs_names_list = []
+            idxs_names_list = nnlib.device.getValidDevicesIdxsWithNamesList()
             if len(idxs_names_list) > 1:
                 io.log_info ("You have multi GPUs in a system: ")
                 for idx, name in idxs_names_list:

@@ -34,9 +34,6 @@ class device:
             self.backend = device.backend
             self.use_fp16 = use_fp16
             self.cpu_only = cpu_only
-            
-            if self.backend == "tensorflow":
-                nvmlInit() 
 
             if not self.cpu_only:
                 self.cpu_only = (self.backend == "tensorflow-cpu")
@@ -260,6 +257,11 @@ class device:
             return 99 if idx == 0 else 0   
             
         return result[0] * 10 + result[1]
+
+    @staticmethod
+    def forceNVMLInitalization():
+        if device.backend == "tensorflow":
+            nvmlInit()
 
         
 force_plaidML = os.environ.get("DFL_FORCE_PLAIDML", "0") == "1" #for OpenCL build , forcing using plaidML even if NVIDIA found
