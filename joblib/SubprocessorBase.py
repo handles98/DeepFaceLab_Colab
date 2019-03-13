@@ -135,6 +135,11 @@ class Subprocessor(object):
         pass
  
     def run(self):
+        try:
+            multiprocessing.set_start_method("spawn")
+        except RuntimeError:
+            pass
+
         self.clis = []
             
         #getting info about name of subprocesses, host and client dicts, and spawning them
