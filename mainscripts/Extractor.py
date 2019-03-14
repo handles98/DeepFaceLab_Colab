@@ -40,14 +40,6 @@ class ExtractSubprocessor(Subprocessor):
             
             self.e = None
 
-            if not self.cpu_only:
-                # Even though nnlib.device works correctly outside of this scope, for whatever reason nothing works once we are in the scope
-                # Which is requiring us to reinitalize here
-                nnlib.device.forceNVMLInitalization() #Really hacky fix, and I'd really love to figure out why there is a problem with this
-                # example of what happens without this
-                # print(nnlib.device.getAllDevicesIdxsList()) works directly when placed under the imports at the top of the code
-                # putting it here without that throws an error about no initalization.
-
             device_config = nnlib.DeviceConfig ( cpu_only=self.cpu_only, force_gpu_idx=self.device_idx, allow_growth=True)
             if self.type == 'rects':
                 if self.detector is not None:

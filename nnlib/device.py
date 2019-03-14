@@ -258,10 +258,6 @@ class device:
             
         return result[0] * 10 + result[1]
 
-    @staticmethod
-    def forceNVMLInitalization():
-        if device.backend == "tensorflow":
-            nvmlInit()
 
         
 force_plaidML = os.environ.get("DFL_FORCE_PLAIDML", "0") == "1" #for OpenCL build , forcing using plaidML even if NVIDIA found
