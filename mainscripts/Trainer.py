@@ -151,7 +151,7 @@ def main(args, device_args):
     else:    
         wnd_name = "Training preview"
         io.named_window(wnd_name)
-        io.capture_keys(wnd_name)
+        #io.capture_keys(wnd_name)
         
         previews = None
         loss_history = None
@@ -234,8 +234,16 @@ def main(args, device_args):
                 io.show_image( wnd_name, (final*255).astype(np.uint8) )
                 is_showing = True
             
-            key_events = io.get_key_events(wnd_name)
-            key, = key_events[-1] if len(key_events) > 0 else (0,)
+            #key_events = io.get_key_events(wnd_name)
+            #key, = key_events[-1] if len(key_events) > 0 else (0,)
+
+            #Temporary fix for massive performance regression while training
+
+            if is_showing:
+                key = cv2.waitKey(100)
+            else:
+                time.sleep(0.1)
+                key = 0
                     
             if key == ord('\n') or key == ord('\r'):
                 s2c.put ( {'op': 'close'} )
