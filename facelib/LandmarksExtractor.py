@@ -1,8 +1,10 @@
+import traceback
 import numpy as np
 import os
 import cv2
 from pathlib import Path
-
+from facelib import FaceType
+from facelib import LandmarksProcessor
 
 class LandmarksExtractor(object):
     def __init__ (self, keras):
@@ -22,7 +24,7 @@ class LandmarksExtractor(object):
         del self.keras_model
         return False #pass exception between __enter__ and __exit__ to outter level
         
-    def extract_from_bgr (self, input_image, rects):
+    def extract_from_bgr (self, input_image, rects, second_pass_extractor=None):
         input_image = input_image[:,:,::-1].copy()
         (h, w, ch) = input_image.shape
         
@@ -41,11 +43,33 @@ class LandmarksExtractor(object):
                 pts_img = self.get_pts_from_predict ( predicted[-1], center, scale)
                 pts_img = [ ( int(pt[0]), int(pt[1]) ) for pt in pts_img ]             
                 landmarks.append ( ( (left, top, right, bottom),pts_img ) )
-            except:
-                landmarks.append ( ( (left, top, right, bottom), [ (0,0) for _ in range(68) ] ) )
+            except Exception as e:
+                landmarks.append ( ( (left, top, right, bottom), None ) )
+
+        if second_pass_extractor is not None:
+            for i in range(len(landmarks)):
+                try:
+                    rect, lmrks = landmarks[i]
+                    if lmrks is None:
+                        continue
+                        
+                    image_to_face_mat = LandmarksProcessor.get_transform_mat (lmrks, 256, FaceType.FULL)
+                    face_image = cv2.warpAffine(input_image, image_to_face_mat, (256, 256), cv2.INTER_CUBIC)
+                    
+                    rects2 = second_pass_extractor.extract_from_bgr(face_image)
+                    if len(rects2) != 1: #dont do second pass if more than 1 or zero faces detected in cropped image
+                        continue
+                        
+                    rect2 = rects2[0]
+                    
+                    lmrks2 = self.extract_from_bgr (face_image, [rect2] )[0][1]
+                    source_lmrks2 = LandmarksProcessor.transform_points (lmrks2, image_to_face_mat, True)                            
+                    landmarks[i] = (rect, source_lmrks2)
+                except:
+                    continue
                 
         return landmarks
-        
+
     def transform(self, point, center, scale, resolution):
         pt = np.array ( [point[0], point[1], 1.0] )            
         h = 200.0 * scale

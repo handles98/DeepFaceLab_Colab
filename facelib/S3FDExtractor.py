@@ -32,21 +32,16 @@ class S3FDExtractor(object):
 
         olist = self.model.predict( np.expand_dims(input_image,0) )
         
-        detected_faces = self.refine (olist)
-        
-        #filtering faces < 40pix by any side
-        #enlarging bottom line a bit for 2DFAN-4, because default is not enough covering a chin
-        new_detected_faces = []
-        for l,t,r,b in detected_faces:
+        detected_faces = []
+        for ltrb in self.refine (olist):
+            l,t,r,b = [ x*input_scale for x in ltrb]
             bt = b-t
-            if min(r-l,bt) < 40:
+            if min(r-l,bt) < 40: #filtering faces < 40pix by any side
                 continue
-            new_detected_faces.append ((l,t,r,b+bt*0.1))
+            b += bt*0.1 #enlarging bottom line a bit for 2DFAN-4, because default is not enough covering a chin
+            detected_faces.append ( [int(x) for x in (l,t,r,b) ] )
 
-        return [ (int(face[0]*input_scale), 
-                  int(face[1]*input_scale),
-                  int(face[2]*input_scale), 
-                  int(face[3]*input_scale)) for face in new_detected_faces ]
+        return detected_faces
         
     def refine(self, olist):
         bboxlist = []
