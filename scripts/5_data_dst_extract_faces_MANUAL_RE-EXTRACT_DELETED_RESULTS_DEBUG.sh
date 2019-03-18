@@ -7,5 +7,5 @@ $DFL_PYTHON "$DFL_SRC/main.py" extract \
     --multi-gpu \
     --detector manual \
     --manual-output-debug-fix \
-    --debug
+    --debug-dir "$DFL_WORKSPACE/data_dst/aligned_debug"
 
