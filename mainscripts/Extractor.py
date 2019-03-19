@@ -35,8 +35,7 @@ class ExtractSubprocessor(Subprocessor):
             self.output_path  = Path(client_dict['output_dir']) if 'output_dir' in client_dict.keys() else None        
             self.debug_dir    = client_dict['debug_dir']
             self.detector     = client_dict['detector']
-            self.accurate_landmarks_extractor = client_dict['accurate_landmarks_extractor']
-            
+  
             self.cached_image = (None, None)
             
             self.e = None
@@ -63,7 +62,7 @@ class ExtractSubprocessor(Subprocessor):
                 nnlib.import_all (device_config)
                 self.e = facelib.LandmarksExtractor(nnlib.keras)
                 self.e.__enter__()
-                if self.accurate_landmarks_extractor and device_config.gpu_vram_gb[0] >= 2:
+                if device_config.gpu_vram_gb[0] >= 2:
                     self.second_pass_e = facelib.S3FDExtractor()
                     self.second_pass_e.__enter__()
                 else:
@@ -178,32 +177,21 @@ class ExtractSubprocessor(Subprocessor):
 
                         if self.debug_dir is not None:
                             LandmarksProcessor.draw_rect_landmarks (debug_image, rect, image_landmarks, self.image_size, self.face_type, transparent_mask=True)
-     
-                        landmarks=face_image_landmarks.tolist()
-                        source_filename = filename_path.name
-                        source_landmarks = image_landmarks.tolist()
-                        source_rect = rect
+
                         if src_dflimg is not None:
                             #if extracting from dflimg copy it in order not to lose quality
                             output_file = str(self.output_path / filename_path.name)
                             if str(filename_path) != str(output_file):
                                 shutil.copy ( str(filename_path), str(output_file) )
-                            
-                            #and transfer data
-                            source_filename = src_dflimg.get_source_filename()                        
-                            mat = src_dflimg.get_image_to_face_mat()
-                            if mat is not None:
-                                image_to_face_mat = mat
-                                source_landmarks = LandmarksProcessor.transform_points (landmarks, image_to_face_mat, True)                            
                         else:
                             output_file = '{}_{}{}'.format(str(self.output_path / filename_path.stem), str(face_idx), '.jpg')
                             cv2_imwrite(output_file, face_image, [int(cv2.IMWRITE_JPEG_QUALITY), 85] )
 
                         DFLJPG.embed_data(output_file, face_type=FaceType.toString(self.face_type),
-                                                       landmarks=landmarks,
-                                                       source_filename=source_filename,
-                                                       source_rect=source_rect,
-                                                       source_landmarks=source_landmarks,
+                                                       landmarks=face_image_landmarks.tolist(),
+                                                       source_filename=filename_path.name,
+                                                       source_rect=rect,
+                                                       source_landmarks=image_landmarks.tolist(),
                                                        image_to_face_mat=image_to_face_mat
                                             )  
                             
@@ -222,7 +210,7 @@ class ExtractSubprocessor(Subprocessor):
             return data[0]
             
     #override
-    def __init__(self, input_data, type, image_size, face_type, debug_dir, multi_gpu=False, cpu_only=False, manual=False, manual_window_size=0, detector=None, output_path=None, accurate_landmarks_extractor=False ): 
+    def __init__(self, input_data, type, image_size, face_type, debug_dir, multi_gpu=False, cpu_only=False, manual=False, manual_window_size=0, detector=None, output_path=None): 
         self.input_data = input_data
         self.type = type
         self.image_size = image_size
@@ -234,7 +222,6 @@ class ExtractSubprocessor(Subprocessor):
         self.output_path = output_path        
         self.manual = manual        
         self.manual_window_size = manual_window_size
-        self.accurate_landmarks_extractor = accurate_landmarks_extractor
         self.result = []
 
         no_response_time_sec = 60 if not self.manual else 999999
@@ -318,8 +305,7 @@ class ExtractSubprocessor(Subprocessor):
             client_dict = base_dict.copy()
             client_dict['device_idx'] = device_idx
             client_dict['device_name'] = device_name
-            client_dict['device_type'] = device_type         
-            client_dict['accurate_landmarks_extractor'] = self.accurate_landmarks_extractor
+            client_dict['device_type'] = device_type
             yield client_dict['device_name'], {}, client_dict
 
     #override
@@ -613,9 +599,6 @@ def main(input_dir,
     
     multi_gpu = device_args.get('multi_gpu', False)
     cpu_only = device_args.get('cpu_only', False)
-
-    accurate_landmarks_extractor = io.input_bool("Use more accurate landmarks extraction? (y/n ?:help skip:n) : ", False, help_message="More accurate landmarks extraction, but processing is slower." )
-       
        
     if not input_path.exists():
         raise ValueError('Input directory not found. Please ensure it exists.')
@@ -655,13 +638,13 @@ def main(input_dir,
     if images_found != 0:    
         if detector == 'manual':
             io.log_info ('Performing manual extract...')
-            extracted_faces = ExtractSubprocessor ([ (filename,[]) for filename in input_path_image_paths ], 'landmarks', image_size, face_type, debug_dir, cpu_only=cpu_only, manual=True, manual_window_size=manual_window_size, accurate_landmarks_extractor=accurate_landmarks_extractor).run()
+            extracted_faces = ExtractSubprocessor ([ (filename,[]) for filename in input_path_image_paths ], 'landmarks', image_size, face_type, debug_dir, cpu_only=cpu_only, manual=True, manual_window_size=manual_window_size).run()
         else:
             io.log_info ('Performing 1st pass...')
             extracted_rects = ExtractSubprocessor ([ (x,) for x in input_path_image_paths ], 'rects', image_size, face_type, debug_dir, multi_gpu=multi_gpu, cpu_only=cpu_only, manual=False, detector=detector).run()
                 
             io.log_info ('Performing 2nd pass...')
-            extracted_faces = ExtractSubprocessor (extracted_rects, 'landmarks', image_size, face_type, debug_dir, multi_gpu=multi_gpu, cpu_only=cpu_only, manual=False, accurate_landmarks_extractor=accurate_landmarks_extractor).run()
+            extracted_faces = ExtractSubprocessor (extracted_rects, 'landmarks', image_size, face_type, debug_dir, multi_gpu=multi_gpu, cpu_only=cpu_only, manual=False).run()
                 
             if manual_fix:
                 io.log_info ('Performing manual fix...')
@@ -669,7 +652,7 @@ def main(input_dir,
                 if all ( np.array ( [ len(data[1]) > 0 for data in extracted_faces] ) == True ):
                     io.log_info ('All faces are detected, manual fix not needed.')
                 else:
-                    extracted_faces = ExtractSubprocessor (extracted_faces, 'landmarks', image_size, face_type, debug_dir, manual=True, manual_window_size=manual_window_size, accurate_landmarks_extractor=accurate_landmarks_extractor).run()
+                    extracted_faces = ExtractSubprocessor (extracted_faces, 'landmarks', image_size, face_type, debug_dir, manual=True, manual_window_size=manual_window_size).run()
 
         if len(extracted_faces) > 0:
             io.log_info ('Performing 3rd pass...')
