@@ -151,13 +151,8 @@ def main(args, device_args):
     else:
         wnd_name = "Training preview"
         io.named_window(wnd_name)
-<<<<<<< HEAD
         #io.capture_keys(wnd_name)
         
-=======
-        io.capture_keys(wnd_name)
-
->>>>>>> upstream/master
         previews = None
         loss_history = None
         selected_preview = 0
@@ -238,7 +233,6 @@ def main(args, device_args):
 
                 io.show_image( wnd_name, (final*255).astype(np.uint8) )
                 is_showing = True
-<<<<<<< HEAD
             
             #key_events = io.get_key_events(wnd_name)
             #key, = key_events[-1] if len(key_events) > 0 else (0,)
@@ -251,12 +245,6 @@ def main(args, device_args):
                 time.sleep(0.1)
                 key = 0
                     
-=======
-
-            key_events = io.get_key_events(wnd_name)
-            key, = key_events[-1] if len(key_events) > 0 else (0,)
-
->>>>>>> upstream/master
             if key == ord('\n') or key == ord('\r'):
                 s2c.put ( {'op': 'close'} )
             elif key == ord('s'):

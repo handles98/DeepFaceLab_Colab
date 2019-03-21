@@ -264,10 +264,6 @@ class device:
         return result[0] * 10 + result[1]
 
 
-<<<<<<< HEAD
-        
-=======
->>>>>>> upstream/master
 force_plaidML = os.environ.get("DFL_FORCE_PLAIDML", "0") == "1" #for OpenCL build , forcing using plaidML even if NVIDIA found
 force_tf_cpu = os.environ.get("DFL_FORCE_TF_CPU", "0") == "1"   #for OpenCL build , forcing using tf-cpu if plaidML failed
 has_nvml = False
