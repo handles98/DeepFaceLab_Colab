@@ -18,7 +18,7 @@ sudo apt-get install --no-install-recommends nvidia-driver-418
 ```
 **Reboot your system.**
 
-## Easy Method; No DLIB CUDA support
+## Easy Method
 
 ### Install Anaconda3
 Download the installer [https://www.anaconda.com/distribution/#linux](https://www.anaconda.com/distribution/#linux). Install Anaconda3 and choose the defaults. You will also need to add conda to your path so you can complete the final steps.
@@ -33,7 +33,7 @@ cd DeepFaceLab_Linux
 python -m pip install -r requirements-cuda.txt
 ```
 
-## Harder Alternate Method; Allows for DLIB CUDA support
+## Harder Alternate Method
 
 For this method, we will create an Ubuntu 16.04 container on your system. In order to do this, we will need to install and configure LXD. 
 ```bash
