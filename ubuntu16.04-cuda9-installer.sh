@@ -30,6 +30,5 @@ sudo apt -y install ffmpeg cmake build-essential git
 # Install DeepFaceLab Python Dependencies
 sudo python3.6 -m pip install -r requirements-cuda.txt
 
-# Test DLIB
-python3.6 -c 'import dlib;print("DLIB CUDA SUPPORT:", dlib.DLIB_USE_CUDA)'
+
 echo "Please reboot your system to let the new changes take effect."
