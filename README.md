@@ -1,12 +1,12 @@
 # Overview
-The purpose of this project is to provide a way to run ***DFL*** for free.  
+The purpose of this project is to provide a way to run ***DeepFaceLab*** for free.  
 When you have learned how to use DFL, Perhaps the biggest limitation for you is the Computer performance.  
 Highly equipped graphics cards are very expensive, and cloud services are not cheap.  
   
 So how free? take this!^_^ Of course there are some restrictions  
   
-The code comes from ***DeepFaceLab*** and ***DFL_Colab*** .  
-This rep just update the .ipynb file ,makes it simpler!  
+The code comes from ***DeepFaceLab*** and ***DeepFaceLab_Linux*** .  
+This rep just add the .ipynb file ,makes it simpler!  
 No need to copy, zip, unzip multiple times, no need to worry about data loss. 
   
 # Features
@@ -14,8 +14,7 @@ No need to copy, zip, unzip multiple times, no need to worry about data loss.
 * Your data is saved in the google Drive
 * You can preview the results online,No need to download
 * Colaboratory requires interaction when in use. The system may stop long-running background calculations
-* Sometimes ***loading*** is slow
-  
+* Sometimes,The first load(train load) may be slower .
   
   ![](https://github.com/dream80/DeepFaceLab_Colab/blob/master/doc/history.jpg?raw=true)  
 
@@ -23,7 +22,7 @@ No need to copy, zip, unzip multiple times, no need to worry about data loss.
 1. First, You need a google account  
 2. Secend,you need a [DeepFaceLab_Colab.ipynb](https://github.com/dream80/DeepFaceLab_Colab/blob/master/DeepFaceLab_Colab.ipynb) file  
 3. Third,  Click ***Open in Colab***  ，Run it！
-4. Fourth, Check out the latest results ,Run [ViewLastHistory](https://github.com/dream80/DeepFaceLab_Colab/blob/master/ViewLastHistory.ipynb) file  
+4. Fourth, Check out the latest results ,Run [ViewLastHistory_H128.ipynb](https://github.com/dream80/DeepFaceLab_Colab/blob/master/ViewLastHistory_H128.ipynb) file  
   
   
   
