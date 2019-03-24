@@ -22,7 +22,7 @@ No need to copy, zip, unzip multiple times, no need to worry about data loss.
 1. First, You need a google account  
 2. Secend,you need a [DeepFaceLab_Colab.ipynb](https://github.com/dream80/DeepFaceLab_Colab/blob/master/DeepFaceLab_Colab.ipynb) file  
 3. Third,  Click ***Open in Colab***  ，Run it！
-4. Fourth, Check out the latest results ,Run [ViewLastHistory_H128.ipynb](https://github.com/dream80/DeepFaceLab_Colab/blob/master/ViewLastHistory_H128.ipynb) file  
+4. Fourth, Run [ViewLastHistory_H128.ipynb](https://github.com/dream80/DeepFaceLab_Colab/blob/master/ViewLastHistory_H128.ipynb) file,Check out the latest results.
   
   
   
