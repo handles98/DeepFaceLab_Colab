@@ -6,3 +6,4 @@
 !requirements*
 !Dockerfile*
 !*.sh
+!*.ipynb
