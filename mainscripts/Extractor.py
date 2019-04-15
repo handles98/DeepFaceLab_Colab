@@ -7,11 +7,11 @@ import shutil
 from pathlib import Path
 import numpy as np
 import mathlib
+import imagelib
 import cv2
 from utils import Path_utils
 from utils.DFLJPG import DFLJPG
 from utils.cv2_utils import *
-from utils import image_utils
 import facelib
 from facelib import FaceType
 from facelib import LandmarksProcessor
@@ -45,7 +45,6 @@ class ExtractSubprocessor(Subprocessor):
             self.cached_image = (None, None)
 
             self.e = None
-
             device_config = nnlib.DeviceConfig ( cpu_only=self.cpu_only, force_gpu_idx=self.device_idx, allow_growth=True)
             self.device_vram = device_config.gpu_vram_gb[0]
 
@@ -379,7 +378,7 @@ class ExtractSubprocessor(Subprocessor):
                     if self.cache_text_lines_img[0] == sh:
                         self.text_lines_img = self.cache_text_lines_img[1]
                     else:
-                        self.text_lines_img = (image_utils.get_draw_text_lines ( self.image, sh,
+                        self.text_lines_img = (imagelib.get_draw_text_lines ( self.image, sh,
                                                         [   '[Mouse click] - lock/unlock selection',
                                                             '[Mouse wheel] - change rect',
                                                             '[Enter] / [Space] - confirm / skip frame',
@@ -412,7 +411,7 @@ class ExtractSubprocessor(Subprocessor):
                                 new_y = np.clip (y, 0, h-1) / self.view_scale
 
                         key_events = io.get_key_events(self.wnd_name)
-                        key, = key_events[-1] if len(key_events) > 0 else (0,)
+                        key, chr_key, ctrl_pressed, alt_pressed, shift_pressed = key_events[-1] if len(key_events) > 0 else (0,0,False,False,False)
 
                         if key == ord('\r') or key == ord('\n'):
                             #confirm frame
@@ -683,8 +682,11 @@ def main(input_dir,
 
     if output_path.exists():
         if not manual_output_debug_fix and input_path != output_path:
-            for filename in Path_utils.get_image_paths(output_path):
-                Path(filename).unlink()
+            output_images_paths = Path_utils.get_image_paths(output_path)
+            if len(output_images_paths) > 0:
+                io.input_bool("WARNING !!! \n %s contains files! \n They will be deleted. \n Press enter to continue." % (str(output_path)), False )
+                for filename in output_images_paths:
+                    Path(filename).unlink()
     else:
         output_path.mkdir(parents=True, exist_ok=True)
 

@@ -7,7 +7,6 @@ import cv2
 from utils.DFLPNG import DFLPNG
 from utils.DFLJPG import DFLJPG
 from utils.cv2_utils import *
-from utils import image_utils
 import shutil
 import numpy as np
 import time
@@ -40,6 +39,8 @@ class ConvertSubprocessor(Subprocessor):
             #therefore forcing active_DeviceConfig to CPU only
             nnlib.active_DeviceConfig = nnlib.DeviceConfig (cpu_only=True)
 
+            self.converter.on_cli_initialize()
+
             return None
 
         #override
@@ -53,9 +54,17 @@ class ConvertSubprocessor(Subprocessor):
             if self.converter.type == Converter.TYPE_FACE and filename_path.stem not in self.alignments.keys():
                 if not self.debug:
                     self.log_info ( 'no faces found for %s, copying without faces' % (filename_path.name) )
-                    shutil.copy ( str(filename_path), str(output_filename_path) )
+
+                    if filename_path.suffix == '.png':
+                        shutil.copy ( str(filename_path), str(output_filename_path) )
+                    else:
+                        image = cv2_imread(str(filename_path))
+                        cv2_imwrite ( str(output_filename_path), image )
             else:
                 image = (cv2_imread(str(filename_path)) / 255.0).astype(np.float32)
+                h,w,c = image.shape
+                if c > 3:
+                    image = image[...,0:3]
 
                 if self.converter.type == Converter.TYPE_IMAGE:
                     image = self.converter.convert_image(image, None, self.debug)
@@ -99,9 +108,9 @@ class ConvertSubprocessor(Subprocessor):
                                 self.log_info ( '\nConverting face_num [%d] in file [%s]' % (face_num, filename_path) )
 
                             if self.debug:
-                                debug_images += self.converter.convert_face(image, image_landmarks, self.debug)
+                                debug_images += self.converter.cli_convert_face(image, image_landmarks, self.debug)
                             else:
-                                image = self.converter.convert_face(image, image_landmarks, self.debug)
+                                image = self.converter.cli_convert_face(image, image_landmarks, self.debug)
 
                         except Exception as e:
                             e_str = traceback.format_exc()
@@ -131,9 +140,6 @@ class ConvertSubprocessor(Subprocessor):
         super().__init__('Converter', ConvertSubprocessor.Cli, 86400 if debug == True else 60)
 
         self.converter = converter
-        self.host_processor, self.cli_func = SubprocessFunctionCaller.make_pair ( self.converter.predictor_func )
-        self.process_converter = self.converter.copy_and_set_predictor(self.cli_func)
-
         self.input_data = self.input_path_image_paths = input_path_image_paths
         self.output_path = output_path
         self.alignments = alignments
@@ -144,12 +150,12 @@ class ConvertSubprocessor(Subprocessor):
 
     #override
     def process_info_generator(self):
-        r = [0] if self.debug else range(multiprocessing.cpu_count())
+        r = [0] if self.debug else range( min(6,multiprocessing.cpu_count()) )
 
         for i in r:
             yield 'CPU%d' % (i), {}, {'device_idx': i,
                                       'device_name': 'CPU%d' % (i),
-                                      'converter' : self.process_converter,
+                                      'converter' : self.converter,
                                       'output_dir' : str(self.output_path),
                                       'alignments' : self.alignments,
                                       'debug': self.debug,
@@ -193,7 +199,7 @@ class ConvertSubprocessor(Subprocessor):
 
     #override
     def on_tick(self):
-        self.host_processor.process_messages()
+        self.converter.on_host_tick()
 
     #override
     def get_result(self):
@@ -226,7 +232,6 @@ def main (args, device_args):
         import models
         model = models.import_model( args['model_name'] )(model_path, device_args=device_args)
         converter = model.get_converter()
-        converter.dummy_predict()
 
         alignments = None
 

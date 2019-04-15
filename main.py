@@ -17,12 +17,11 @@ class fixPathAction(argparse.Action):
 if __name__ == "__main__":
     multiprocessing.set_start_method("spawn")
 
-    os_utils.set_process_lowest_prio()
     parser = argparse.ArgumentParser()
-
     subparsers = parser.add_subparsers()
 
     def process_extract(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import Extractor
         Extractor.main( arguments.input_dir,
                         arguments.output_dir,
@@ -51,6 +50,7 @@ if __name__ == "__main__":
     p.set_defaults (func=process_extract)
 
     def process_sort(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import Sorter
         Sorter.main (input_path=arguments.input_dir, sort_by_method=arguments.sort_by_method)
 
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     p.set_defaults (func=process_sort)
 
     def process_util(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import Util
 
         if arguments.convert_png_to_jpg:
@@ -79,12 +80,14 @@ if __name__ == "__main__":
     p.set_defaults (func=process_util)
 
     def process_train(arguments):
+        os_utils.set_process_lowest_prio()
         args = {'training_data_src_dir'  : arguments.training_data_src_dir,
                 'training_data_dst_dir'  : arguments.training_data_dst_dir,
                 'model_path'             : arguments.model_dir,
                 'model_name'             : arguments.model_name,
                 'no_preview'             : arguments.no_preview,
                 'debug'                  : arguments.debug,
+                'execute_programs'       : [ [int(x[0]), x[1] ] for x in arguments.execute_program ]
                 }
         device_args = {'cpu_only'  : arguments.cpu_only,
                        'force_gpu_idx' : arguments.force_gpu_idx,
@@ -101,9 +104,11 @@ if __name__ == "__main__":
     p.add_argument('--debug', action="store_true", dest="debug", default=False, help="Debug samples.")
     p.add_argument('--cpu-only', action="store_true", dest="cpu_only", default=False, help="Train on CPU.")
     p.add_argument('--force-gpu-idx', type=int, dest="force_gpu_idx", default=-1, help="Force to choose this GPU idx.")
+    p.add_argument('--execute-program', dest="execute_program", default=[], action='append', nargs='+')
     p.set_defaults (func=process_train)
 
     def process_convert(arguments):
+        os_utils.set_process_lowest_prio()
         args = {'input_dir'   : arguments.input_dir,
                 'output_dir'  : arguments.output_dir,
                 'aligned_dir' : arguments.aligned_dir,
@@ -131,16 +136,18 @@ if __name__ == "__main__":
     videoed_parser = subparsers.add_parser( "videoed", help="Video processing.").add_subparsers()
 
     def process_videoed_extract_video(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import VideoEd
         VideoEd.extract_video (arguments.input_file, arguments.output_dir, arguments.output_ext, arguments.fps)
     p = videoed_parser.add_parser( "extract-video", help="Extract images from video file.")
     p.add_argument('--input-file', required=True, action=fixPathAction, dest="input_file", help="Input file to be processed. Specify .*-extension to find first file.")
     p.add_argument('--output-dir', required=True, action=fixPathAction, dest="output_dir", help="Output directory. This is where the extracted images will be stored.")
-    p.add_argument('--ouptut-ext', dest="output_ext", default='png', help="Image format (extension) of output files.")
+    p.add_argument('--output-ext', dest="output_ext", default=None, help="Image format (extension) of output files.")
     p.add_argument('--fps', type=int, dest="fps", default=None, help="How many frames of every second of the video will be extracted. 0 - full fps.")
     p.set_defaults(func=process_videoed_extract_video)
 
     def process_videoed_cut_video(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import VideoEd
         VideoEd.cut_video (arguments.input_file,
                            arguments.from_time,
@@ -156,6 +163,7 @@ if __name__ == "__main__":
     p.set_defaults(func=process_videoed_cut_video)
 
     def process_videoed_denoise_image_sequence(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import VideoEd
         VideoEd.denoise_image_sequence (arguments.input_dir, arguments.ext, arguments.factor)
     p = videoed_parser.add_parser( "denoise-image-sequence", help="Denoise sequence of images, keeping sharp edges. This allows you to make the final fake more believable, since the neural network is not able to make a detailed skin texture, but it makes the edges quite clear. Therefore, if the whole frame is more `blurred`, then a fake will seem more believable. Especially true for scenes of the film, which are usually very clear.")
@@ -165,6 +173,7 @@ if __name__ == "__main__":
     p.set_defaults(func=process_videoed_denoise_image_sequence)
 
     def process_videoed_video_from_sequence(arguments):
+        os_utils.set_process_lowest_prio()
         from mainscripts import VideoEd
         VideoEd.video_from_sequence (arguments.input_dir,
                                      arguments.output_file,
@@ -184,24 +193,23 @@ if __name__ == "__main__":
     p.add_argument('--lossless', action="store_true", dest="lossless", default=False, help="PNG codec.")
     p.set_defaults(func=process_videoed_video_from_sequence)
 
-    def process_labelingtool(arguments):
-        from mainscripts import LabelingTool
-        LabelingTool.main (arguments.input_dir, arguments.output_dir)
+    def process_labelingtool_edit_mask(arguments):
+        from mainscripts import MaskEditorTool
+        MaskEditorTool.mask_editor_main (arguments.input_dir, arguments.confirmed_dir, arguments.skipped_dir)
 
-    p = subparsers.add_parser( "labelingtool", help="Labeling tool.")
+    labeling_parser = subparsers.add_parser( "labelingtool", help="Labeling tool.").add_subparsers()
+    p = labeling_parser.add_parser ( "edit_mask", help="")
     p.add_argument('--input-dir', required=True, action=fixPathAction, dest="input_dir", help="Input directory of aligned faces.")
-    p.add_argument('--output-dir', required=True, action=fixPathAction, dest="output_dir", help="Output directory. This is where the labeled faces will be stored.")
-    p.set_defaults(func=process_labelingtool)
-
+    p.add_argument('--confirmed-dir', required=True, action=fixPathAction, dest="confirmed_dir", help="This is where the labeled faces will be stored.")
+    p.add_argument('--skipped-dir', required=True, action=fixPathAction, dest="skipped_dir", help="This is where the labeled faces will be stored.")
+    p.set_defaults(func=process_labelingtool_edit_mask)
+    
     def bad_args(arguments):
         parser.print_help()
         exit(0)
     parser.set_defaults(func=bad_args)
 
     arguments = parser.parse_args()
-
-    #os.environ['force_plaidML'] = '1'
-
     arguments.func(arguments)
 
     print ("Done.")

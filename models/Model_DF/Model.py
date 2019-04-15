@@ -3,7 +3,7 @@ import numpy as np
 from nnlib import nnlib
 from models import ModelBase
 from facelib import FaceType
-from samples import *
+from samplelib import *
 from interact import interact as io
 
 class Model(ModelBase):
@@ -12,7 +12,7 @@ class Model(ModelBase):
     def onInitializeOptions(self, is_first_run, ask_override):
         if is_first_run or ask_override:
             def_pixel_loss = self.options.get('pixel_loss', False)
-            self.options['pixel_loss'] = io.input_bool ("Use pixel loss? (y/n, ?:help skip: n/default ) : ", def_pixel_loss, help_message="Default DSSIM loss good for initial understanding structure of faces. Use pixel loss after 20k iters to enhance fine details and decrease face jitter.")
+            self.options['pixel_loss'] = io.input_bool ("Use pixel loss? (y/n, ?:help skip: n/default ) : ", def_pixel_loss, help_message="Pixel loss may help to enhance fine details and stabilize face color. Use it only if quality does not improve over time.")
         else:
             self.options['pixel_loss'] = self.options.get('pixel_loss', False)
 
@@ -33,11 +33,15 @@ class Model(ModelBase):
                               ]
             self.load_weights_safe(weights_to_load)
 
-        self.autoencoder_src = Model([ae_input_layer,mask_layer], self.decoder_src(self.encoder(ae_input_layer)))
-        self.autoencoder_dst = Model([ae_input_layer,mask_layer], self.decoder_dst(self.encoder(ae_input_layer)))
+        rec_src = self.decoder_src(self.encoder(ae_input_layer))
+        rec_dst = self.decoder_dst(self.encoder(ae_input_layer))
+        self.autoencoder_src = Model([ae_input_layer,mask_layer], rec_src)
+        self.autoencoder_dst = Model([ae_input_layer,mask_layer], rec_dst)
 
         self.autoencoder_src.compile(optimizer=Adam(lr=5e-5, beta_1=0.5, beta_2=0.999), loss=[DSSIMMSEMaskLoss(mask_layer, is_mse=self.options['pixel_loss']), 'mse'] )
         self.autoencoder_dst.compile(optimizer=Adam(lr=5e-5, beta_1=0.5, beta_2=0.999), loss=[DSSIMMSEMaskLoss(mask_layer, is_mse=self.options['pixel_loss']), 'mse'] )
+
+        self.convert = K.function([ae_input_layer], rec_src)
 
         if self.is_training_mode:
             f = SampleProcessor.TypeFlags
@@ -45,15 +49,15 @@ class Model(ModelBase):
                     SampleGeneratorFace(self.training_data_src_path, sort_by_yaw_target_samples_path=self.training_data_dst_path if self.sort_by_yaw else None,
                                                                      debug=self.is_debug(), batch_size=self.batch_size,
                         sample_process_options=SampleProcessor.Options(random_flip=self.random_flip, scale_range=np.array([-0.05, 0.05])+self.src_scale_mod / 100.0 ),
-                        output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_BGR, 128],
-                                              [f.TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_BGR, 128],
-                                              [f.TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_M | f.FACE_MASK_FULL, 128] ] ),
+                        output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_BGR, 128],
+                                              [f.TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_BGR, 128],
+                                              [f.TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_M | f.FACE_MASK_FULL, 128] ] ),
 
                     SampleGeneratorFace(self.training_data_dst_path, debug=self.is_debug(), batch_size=self.batch_size,
                         sample_process_options=SampleProcessor.Options(random_flip=self.random_flip),
-                        output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_BGR, 128],
-                                              [f.TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_BGR, 128],
-                                              [f.TRANSFORMED | f.FACE_ALIGN_FULL | f.MODE_M | f.FACE_MASK_FULL, 128] ] )
+                        output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_BGR, 128],
+                                              [f.TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_BGR, 128],
+                                              [f.TRANSFORMED | f.FACE_TYPE_FULL | f.MODE_M | f.FACE_MASK_FULL, 128] ] )
                 ])
     #override
     def onSave(self):
@@ -103,21 +107,14 @@ class Model(ModelBase):
         return [ ('DF', np.concatenate ( st, axis=0 ) ) ]
 
     def predictor_func (self, face):
-
-        face_128_bgr = face[...,0:3]
-        face_128_mask = np.expand_dims(face[...,3],-1)
-
-        x, mx = self.autoencoder_src.predict ( [ np.expand_dims(face_128_bgr,0), np.expand_dims(face_128_mask,0) ] )
-        x, mx = x[0], mx[0]
-
-        return np.concatenate ( (x,mx), -1 )
+        x, mx = self.convert ( [ face[np.newaxis,...] ] )
+        return x[0], mx[0][...,0]
 
     #override
     def get_converter(self):
         from converters import ConverterMasked
         return ConverterMasked(self.predictor_func,
                                predictor_input_size=128,
-                               output_size=128,
                                face_type=FaceType.FULL,
                                base_erode_mask_modifier=30,
                                base_blur_mask_modifier=0)

@@ -3,7 +3,7 @@ import numpy as np
 from nnlib import nnlib
 from models import ModelBase
 from facelib import FaceType
-from samples import *
+from samplelib import *
 from interact import interact as io
 
 class Model(ModelBase):
@@ -20,7 +20,7 @@ class Model(ModelBase):
 
         if is_first_run or ask_override:
             def_pixel_loss = self.options.get('pixel_loss', False)
-            self.options['pixel_loss'] = io.input_bool ("Use pixel loss? (y/n, ?:help skip: n/default ) : ", def_pixel_loss, help_message="Default DSSIM loss good for initial understanding structure of faces. Use pixel loss after 20k iters to enhance fine details and decrease face jitter.")
+            self.options['pixel_loss'] = io.input_bool ("Use pixel loss? (y/n, ?:help skip: n/default ) : ", def_pixel_loss, help_message="Pixel loss may help to enhance fine details and stabilize face color. Use it only if quality does not improve over time.")
         else:
             self.options['pixel_loss'] = self.options.get('pixel_loss', False)
 
@@ -59,15 +59,15 @@ class Model(ModelBase):
                     SampleGeneratorFace(self.training_data_src_path, sort_by_yaw_target_samples_path=self.training_data_dst_path if self.sort_by_yaw else None,
                                                                      debug=self.is_debug(), batch_size=self.batch_size,
                             sample_process_options=SampleProcessor.Options(random_flip=self.random_flip, scale_range=np.array([-0.05, 0.05])+self.src_scale_mod / 100.0 ),
-                            output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_BGR, 128],
-                                                  [f.TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_BGR, 128],
-                                                  [f.TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_M | f.FACE_MASK_FULL, 128] ] ),
+                            output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_BGR, 128],
+                                                  [f.TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_BGR, 128],
+                                                  [f.TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_M | f.FACE_MASK_FULL, 128] ] ),
 
                     SampleGeneratorFace(self.training_data_dst_path, debug=self.is_debug(), batch_size=self.batch_size,
                             sample_process_options=SampleProcessor.Options(random_flip=self.random_flip),
-                            output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_BGR, 128],
-                                                  [f.TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_BGR, 128],
-                                                  [f.TRANSFORMED | f.FACE_ALIGN_HALF | f.MODE_M | f.FACE_MASK_FULL, 128] ] )
+                            output_sample_types=[ [f.WARPED_TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_BGR, 128],
+                                                  [f.TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_BGR, 128],
+                                                  [f.TRANSFORMED | f.FACE_TYPE_HALF | f.MODE_M | f.FACE_MASK_FULL, 128] ] )
                 ])
 
     #override
@@ -116,20 +116,14 @@ class Model(ModelBase):
         return [ ('H128', np.concatenate ( st, axis=0 ) ) ]
 
     def predictor_func (self, face):
-        face_128_bgr = face[...,0:3]
-        face_128_mask = np.expand_dims(face[...,3],-1)
-
-        x, mx = self.src_view ( [ np.expand_dims(face_128_bgr,0) ] )
-        x, mx = x[0], mx[0]
-
-        return np.concatenate ( (x,mx), -1 )
+        x, mx = self.src_view ( [ face[np.newaxis,...] ] )
+        return x[0], mx[0][...,0]
 
     #override
     def get_converter(self):
         from converters import ConverterMasked
         return ConverterMasked(self.predictor_func,
                                predictor_input_size=128,
-                               output_size=128,
                                face_type=FaceType.HALF,
                                base_erode_mask_modifier=100,
                                base_blur_mask_modifier=100)

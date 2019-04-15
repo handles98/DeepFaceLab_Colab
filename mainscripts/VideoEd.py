@@ -189,8 +189,7 @@ def video_from_sequence( input_dir, output_file, reference_file=None, ext=None, 
 
     output_kwargs.update ({"c:a": "aac",
                            "b:a": "192k",
-                           "ar" : "48000",
-                           "strict": "experimental"
+                           "ar" : "48000"
                           })
 
     job = ( ffmpeg.output(*output_args, **output_kwargs).overwrite_output() )

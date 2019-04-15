@@ -4,14 +4,14 @@ import time
 import inspect
 import pickle
 import colorsys
+import imagelib
 from pathlib import Path
 from utils import Path_utils
 from utils import std_utils
-from utils import image_utils
 from utils.cv2_utils import *
 import numpy as np
 import cv2
-from samples import SampleGeneratorBase
+from samplelib import SampleGeneratorBase
 from nnlib import nnlib
 from interact import interact as io
 '''
@@ -143,12 +143,12 @@ class ModelBase(object):
             self.batch_size = 1
 
         if self.is_training_mode:
-            if self.write_preview_history:
-                if self.device_args['force_gpu_idx'] == -1:
-                    self.preview_history_path = self.model_path / ( '%s_history' % (self.get_model_name()) )
-                else:
-                    self.preview_history_path = self.model_path / ( '%d_%s_history' % (self.device_args['force_gpu_idx'], self.get_model_name()) )
+            if self.device_args['force_gpu_idx'] == -1:
+                self.preview_history_path = self.model_path / ( '%s_history' % (self.get_model_name()) )
+            else:
+                self.preview_history_path = self.model_path / ( '%d_%s_history' % (self.device_args['force_gpu_idx'], self.get_model_name()) )
 
+            if self.write_preview_history or io.is_colab():
                 if not self.preview_history_path.exists():
                     self.preview_history_path.mkdir(exist_ok=True)
                 else:
@@ -351,7 +351,7 @@ class ModelBase(object):
                 if len(batch.shape) == 4:
                     images.append( batch[0] )
 
-        return image_utils.equalize_and_stack_square (images)
+        return imagelib.equalize_and_stack_square (images)
 
     def generate_next_sample(self):
         return [next(generator) for generator in self.generator_list]
@@ -365,24 +365,24 @@ class ModelBase(object):
 
         self.loss_history.append ( [float(loss[1]) for loss in losses] )
 
-        if self.write_preview_history:
-            if self.iter % 10 == 0:
-                preview = self.get_static_preview()
+        if self.iter % 10 == 0:
+            plist = []
+
+            if io.is_colab():
+                plist += [ (self.get_previews()[0][1], self.get_strpath_storage_for_file('preview.jpg') ) ]
+
+            if self.write_preview_history:
+                plist += [ (self.get_static_preview(), str (self.preview_history_path / ('%.6d.jpg' % (self.iter))) ) ]
+
+            for preview, filepath in plist:
                 preview_lh = ModelBase.get_loss_history_preview(self.loss_history, self.iter, preview.shape[1], preview.shape[2])
                 img = (np.concatenate ( [preview_lh, preview], axis=0 ) * 255).astype(np.uint8)
-                cv2_imwrite ( str (self.preview_history_path / ('%.6d.jpg' %( self.iter) )), img )
+                cv2_imwrite (filepath, img )
+
 
         self.iter += 1
 
-        time_str = time.strftime("[%H:%M:%S]")
-        if iter_time >= 10:
-            loss_string = "{0}[#{1:06d}][{2:.5s}s]".format ( time_str, self.iter, '{:0.4f}'.format(iter_time) )
-        else:
-            loss_string = "{0}[#{1:06d}][{2:04d}ms]".format ( time_str, self.iter, int(iter_time*1000) )
-        for (loss_name, loss_value) in losses:
-            loss_string += " %s:%.3f" % (loss_name, loss_value)
-
-        return loss_string
+        return self.iter, iter_time
 
     def pass_one_iter(self):
         self.last_sample = self.generate_next_sample()
@@ -496,5 +496,5 @@ class ModelBase(object):
 
         lh_text = 'Iter: %d' % (iter) if iter != 0 else ''
 
-        lh_img[last_line_t:last_line_b, 0:w] += image_utils.get_text_image (  (w,last_line_b-last_line_t,c), lh_text, color=[0.8]*c )
+        lh_img[last_line_t:last_line_b, 0:w] += imagelib.get_text_image (  (last_line_b-last_line_t,w,c), lh_text, color=[0.8]*c )
         return lh_img

@@ -14,7 +14,16 @@ class Converter(object):
         self.type = type
 
     #overridable
-    def convert_face (self, img_bgr, img_face_landmarks, debug):
+    def on_cli_initialize(self):
+        #cli initialization
+        pass
+
+    #overridable
+    def on_host_tick(self):
+        pass
+
+    #overridable
+    def cli_convert_face (self, img_bgr, img_face_landmarks, debug):
         #return float32 image
         #if debug , return tuple ( images of any size and channels, ...)
         return image

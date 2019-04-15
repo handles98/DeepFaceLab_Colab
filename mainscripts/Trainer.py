@@ -7,7 +7,7 @@ import numpy as np
 import itertools
 from pathlib import Path
 from utils import Path_utils
-from utils import image_utils
+import imagelib
 import cv2
 import models
 from interact import interact as io
@@ -15,12 +15,15 @@ from interact import interact as io
 def trainerThread (s2c, c2s, args, device_args):
     while True:
         try:
+            start_time = time.time()
+
             training_data_src_path = Path( args.get('training_data_src_dir', '') )
             training_data_dst_path = Path( args.get('training_data_dst_dir', '') )
             model_path = Path( args.get('model_path', '') )
             model_name = args.get('model_name', '')
             save_interval_min = 15
             debug = args.get('debug', '')
+            execute_programs = args.get('execute_programs', [])
 
             if not training_data_src_path.exists():
                 io.log_err('Training data src directory does not exist.')
@@ -41,14 +44,15 @@ def trainerThread (s2c, c2s, args, device_args):
                         device_args=device_args)
 
             is_reached_goal = model.is_reached_iter_goal()
-            is_upd_save_time_after_train = False
+
+            shared_state = { 'after_save' : False }
             loss_string = ""
+            save_iter =  model.get_iter()
             def model_save():
                 if not debug and not is_reached_goal:
                     io.log_info ("Saving....", end='\r')
                     model.save()
-                    io.log_info(loss_string)
-                    is_upd_save_time_after_train = True
+                    shared_state['after_save'] = True
 
             def send_preview():
                 if not debug:
@@ -74,13 +78,48 @@ def trainerThread (s2c, c2s, args, device_args):
 
             for i in itertools.count(0,1):
                 if not debug:
-                    if not is_reached_goal:
-                        loss_string = model.train_one_iter()
-                        if is_upd_save_time_after_train:
-                            #save resets plaidML programs, so upd last_save_time only after plaidML rebuild them
-                            last_save_time = time.time()
+                    cur_time = time.time()
 
-                        io.log_info (loss_string, end='\r')
+                    for x in execute_programs:
+                        prog_time, prog = x
+                        if prog_time != 0 and (cur_time - start_time) >= prog_time:
+                            x[0] = 0
+                            try:
+                                exec(prog)
+                            except Exception as e:
+                                print("Unable to execute program: %s" % (prog) )
+
+                    if not is_reached_goal:
+                        iter, iter_time = model.train_one_iter()
+
+                        loss_history = model.get_loss_history()
+                        time_str = time.strftime("[%H:%M:%S]")
+                        if iter_time >= 10:
+                            loss_string = "{0}[#{1:06d}][{2:.5s}s]".format ( time_str, iter, '{:0.4f}'.format(iter_time) )
+                        else:
+                            loss_string = "{0}[#{1:06d}][{2:04d}ms]".format ( time_str, iter, int(iter_time*1000) )
+
+                        if shared_state['after_save']:
+                            shared_state['after_save'] = False
+                            last_save_time = time.time() #upd last_save_time only after save+one_iter, because plaidML rebuilds programs after save https://github.com/plaidml/plaidml/issues/274
+
+                            mean_loss = np.mean ( [ np.array(loss_history[i]) for i in range(save_iter, iter) ], axis=0)
+
+                            for loss_value in mean_loss:
+                                loss_string += "[%.4f]" % (loss_value)
+
+                            io.log_info (loss_string)
+
+                            save_iter = iter
+                        else:
+                            for loss_value in loss_history[-1]:
+                                loss_string += "[%.4f]" % (loss_value)
+
+                            if io.is_colab():
+                                io.log_info ('\r' + loss_string, end='')
+                            else:
+                                io.log_info (loss_string, end='\r')
+
                         if model.get_target_iter() != 0 and model.is_reached_iter_goal():
                             io.log_info ('Reached target iteration.')
                             model_save()
@@ -88,7 +127,6 @@ def trainerThread (s2c, c2s, args, device_args):
                             io.log_info ('You can use preview now.')
 
                 if not is_reached_goal and (time.time() - last_save_time) >= save_interval_min*60:
-                    last_save_time = time.time()
                     model_save()
                     send_preview()
 
@@ -147,12 +185,15 @@ def main(args, device_args):
                 op = input.get('op','')
                 if op == 'close':
                     break
-            io.process_messages(0.1)
+            try:
+                io.process_messages(0.1)
+            except KeyboardInterrupt:
+                s2c.put ( {'op': 'close'} )
     else:
         wnd_name = "Training preview"
         io.named_window(wnd_name)
-        #io.capture_keys(wnd_name)
-        
+        io.capture_keys(wnd_name)
+
         previews = None
         loss_history = None
         selected_preview = 0
@@ -215,7 +256,7 @@ def main(args, device_args):
                 for i in range(0, len(head_lines)):
                     t = i*head_line_height
                     b = (i+1)*head_line_height
-                    head[t:b, 0:w] += image_utils.get_text_image (  (w,head_line_height,c) , head_lines[i], color=[0.8]*c )
+                    head[t:b, 0:w] += imagelib.get_text_image (  (head_line_height,w,c) , head_lines[i], color=[0.8]*c )
 
                 final = head
 
@@ -233,18 +274,10 @@ def main(args, device_args):
 
                 io.show_image( wnd_name, (final*255).astype(np.uint8) )
                 is_showing = True
+
+            key_events = io.get_key_events(wnd_name)
+            key, chr_key, ctrl_pressed, alt_pressed, shift_pressed = key_events[-1] if len(key_events) > 0 else (0,0,False,False,False)
             
-            #key_events = io.get_key_events(wnd_name)
-            #key, = key_events[-1] if len(key_events) > 0 else (0,)
-
-            #Temporary fix for massive performance regression while training
-
-            if is_showing:
-                key = cv2.waitKey(100)
-            else:
-                time.sleep(0.1)
-                key = 0
-                    
             if key == ord('\n') or key == ord('\r'):
                 s2c.put ( {'op': 'close'} )
             elif key == ord('s'):
@@ -269,6 +302,9 @@ def main(args, device_args):
                 selected_preview = (selected_preview + 1) % len(previews)
                 update_preview = True
 
-            io.process_messages(0.1)
+            try:
+                io.process_messages(0.1)
+            except KeyboardInterrupt:
+                s2c.put ( {'op': 'close'} )
 
         io.destroy_all_windows()

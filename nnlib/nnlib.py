@@ -16,6 +16,8 @@ class nnlib(object):
     DeviceConfig = device.Config
     active_DeviceConfig = DeviceConfig() #default is one best GPU
 
+    backend = ""
+
     dlib = None
 
     keras = None
@@ -49,7 +51,7 @@ KL = keras.layers
 Input = KL.Input
 
 Dense = KL.Dense
-Conv2D = KL.Conv2D
+Conv2D = nnlib.Conv2D
 Conv2DTranspose = KL.Conv2DTranspose
 SeparableConv2D = KL.SeparableConv2D
 MaxPooling2D = KL.MaxPooling2D
@@ -158,22 +160,21 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
         if nnlib.keras is not None:
             return nnlib.code_import_keras
 
-        if "tensorflow" in device_config.backend:
+        nnlib.backend = device_config.backend
+
+        if "tensorflow" in nnlib.backend:
             nnlib._import_tf(device_config)
-        elif device_config.backend == "plaidML":
+        elif nnlib.backend == "plaidML":
             os.environ["KERAS_BACKEND"] = "plaidml.keras.backend"
             os.environ["PLAIDML_DEVICE_IDS"] = ",".join ( [ nnlib.device.getDeviceID(idx) for idx in device_config.gpu_idxs] )
 
-        if 'TF_SUPPRESS_STD' in os.environ.keys() and os.environ['TF_SUPPRESS_STD'] == '1':
-            suppressor = std_utils.suppress_stdout_stderr().__enter__()
-
-        #if "tensorflow" in device_config.backend:
+        #if "tensorflow" in nnlib.backend:
         #    nnlib.keras = nnlib.tf.keras
         #else:
         import keras as keras_
         nnlib.keras = keras_
 
-        if device_config.backend == "plaidML":
+        if nnlib.backend == "plaidML":
             import plaidml
             import plaidml.tile
             nnlib.PML = plaidml
@@ -183,13 +184,10 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
         if device_config.use_fp16:
             nnlib.keras.backend.set_floatx('float16')
 
-        if "tensorflow" in device_config.backend:
+        if "tensorflow" in nnlib.backend:
             nnlib.keras.backend.set_session(nnlib.tf_sess)
 
         nnlib.keras.backend.set_image_data_format('channels_last')
-
-        if 'TF_SUPPRESS_STD' in os.environ.keys() and os.environ['TF_SUPPRESS_STD'] == '1':
-            suppressor.__exit__()
 
         nnlib.code_import_keras = compile (nnlib.code_import_keras_string,'','exec')
         nnlib.__initialize_keras_functions()
@@ -201,6 +199,7 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
         keras = nnlib.keras
         K = keras.backend
         KL = keras.layers
+        backend = nnlib.backend
 
         def modelify(model_functor):
             def func(tensor):
@@ -322,84 +321,135 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
 
         nnlib.dssim = dssim
 
-        class PixelShuffler(KL.Layer):
-            def __init__(self, size=(2, 2), data_format='channels_last', **kwargs):
-                super(PixelShuffler, self).__init__(**kwargs)
-                self.data_format = data_format
-                self.size = size
+        if 'tensorflow' in backend:
+            class PixelShuffler(keras.layers.Layer):
+                def __init__(self, size=(2, 2),  data_format='channels_last', **kwargs):
+                    super(PixelShuffler, self).__init__(**kwargs)
+                    self.data_format = data_format
+                    self.size = size
 
-            def call(self, inputs):
-                input_shape = K.int_shape(inputs)
-                if len(input_shape) != 4:
-                    raise ValueError('Inputs should have rank ' +
-                                     str(4) +
-                                     '; Received input shape:', str(input_shape))
+                def call(self, inputs):
+                    input_shape = K.shape(inputs)
+                    if K.int_shape(input_shape)[0] != 4:
+                        raise ValueError('Inputs should have rank 4; Received input shape:', str(K.int_shape(inputs)))
 
-                if self.data_format == 'channels_first':
-                    batch_size, c, h, w = input_shape
-                    if batch_size is None:
-                        batch_size = -1
-                    rh, rw = self.size
-                    oh, ow = h * rh, w * rw
-                    oc = c // (rh * rw)
+                    if self.data_format == 'channels_first':
+                        return K.tf.depth_to_space(inputs, self.size[0], 'NCHW')
 
-                    out = K.reshape(inputs, (batch_size, rh, rw, oc, h, w))
-                    out = K.permute_dimensions(out, (0, 3, 4, 1, 5, 2))
-                    out = K.reshape(out, (batch_size, oc, oh, ow))
-                    return out
+                    elif self.data_format == 'channels_last':
+                        return K.tf.depth_to_space(inputs, self.size[0], 'NHWC')
 
-                elif self.data_format == 'channels_last':
-                    batch_size, h, w, c = input_shape
-                    if batch_size is None:
-                        batch_size = -1
-                    rh, rw = self.size
-                    oh, ow = h * rh, w * rw
-                    oc = c // (rh * rw)
+                def compute_output_shape(self, input_shape):
+                    if len(input_shape) != 4:
+                        raise ValueError('Inputs should have rank ' +
+                                        str(4) +
+                                        '; Received input shape:', str(input_shape))
 
-                    out = K.reshape(inputs, (batch_size, h, w, rh, rw, oc))
-                    out = K.permute_dimensions(out, (0, 1, 3, 2, 4, 5))
-                    out = K.reshape(out, (batch_size, oh, ow, oc))
-                    return out
+                    if self.data_format == 'channels_first':
+                        height = input_shape[2] * self.size[0] if input_shape[2] is not None else None
+                        width = input_shape[3] * self.size[1] if input_shape[3] is not None else None
+                        channels = input_shape[1] // self.size[0] // self.size[1]
 
-            def compute_output_shape(self, input_shape):
+                        if channels * self.size[0] * self.size[1] != input_shape[1]:
+                            raise ValueError('channels of input and size are incompatible')
 
-                if len(input_shape) != 4:
-                    raise ValueError('Inputs should have rank ' +
-                                     str(4) +
-                                     '; Received input shape:', str(input_shape))
+                        return (input_shape[0],
+                                channels,
+                                height,
+                                width)
 
-                if self.data_format == 'channels_first':
-                    height = input_shape[2] * self.size[0] if input_shape[2] is not None else None
-                    width = input_shape[3] * self.size[1] if input_shape[3] is not None else None
-                    channels = input_shape[1] // self.size[0] // self.size[1]
+                    elif self.data_format == 'channels_last':
+                        height = input_shape[1] * self.size[0] if input_shape[1] is not None else None
+                        width = input_shape[2] * self.size[1] if input_shape[2] is not None else None
+                        channels = input_shape[3] // self.size[0] // self.size[1]
 
-                    if channels * self.size[0] * self.size[1] != input_shape[1]:
-                        raise ValueError('channels of input and size are incompatible')
+                        if channels * self.size[0] * self.size[1] != input_shape[3]:
+                            raise ValueError('channels of input and size are incompatible')
 
-                    return (input_shape[0],
-                            channels,
-                            height,
-                            width)
+                        return (input_shape[0],
+                                height,
+                                width,
+                                channels)
 
-                elif self.data_format == 'channels_last':
-                    height = input_shape[1] * self.size[0] if input_shape[1] is not None else None
-                    width = input_shape[2] * self.size[1] if input_shape[2] is not None else None
-                    channels = input_shape[3] // self.size[0] // self.size[1]
+                def get_config(self):
+                    config = {'size': self.size,
+                            'data_format': self.data_format}
+                    base_config = super(PixelShuffler, self).get_config()
 
-                    if channels * self.size[0] * self.size[1] != input_shape[3]:
-                        raise ValueError('channels of input and size are incompatible')
+                    return dict(list(base_config.items()) + list(config.items()))
+        else:
+            class PixelShuffler(KL.Layer):
+                def __init__(self, size=(2, 2), data_format='channels_last', **kwargs):
+                    super(PixelShuffler, self).__init__(**kwargs)
+                    self.data_format = data_format
+                    self.size = size
 
-                    return (input_shape[0],
-                            height,
-                            width,
-                            channels)
+                def call(self, inputs):
 
-            def get_config(self):
-                config = {'size': self.size,
-                          'data_format': self.data_format}
-                base_config = super(PixelShuffler, self).get_config()
+                    input_shape = K.shape(inputs)
+                    if K.int_shape(input_shape)[0] != 4:
+                        raise ValueError('Inputs should have rank 4; Received input shape:', str(K.int_shape(inputs)))
 
-                return dict(list(base_config.items()) + list(config.items()))
+                    if self.data_format == 'channels_first':
+                        batch_size, c, h, w = input_shape[0], K.int_shape(inputs)[1], input_shape[2], input_shape[3]
+                        rh, rw = self.size
+                        oh, ow = h * rh, w * rw
+                        oc = c // (rh * rw)
+
+                        out = K.reshape(inputs, (batch_size, rh, rw, oc, h, w))
+                        out = K.permute_dimensions(out, (0, 3, 4, 1, 5, 2))
+                        out = K.reshape(out, (batch_size, oc, oh, ow))
+                        return out
+
+                    elif self.data_format == 'channels_last':
+                        batch_size, h, w, c = input_shape[0], input_shape[1], input_shape[2], K.int_shape(inputs)[-1]
+                        rh, rw = self.size
+                        oh, ow = h * rh, w * rw
+                        oc = c // (rh * rw)
+
+                        out = K.reshape(inputs, (batch_size, h, w, rh, rw, oc))
+                        out = K.permute_dimensions(out, (0, 1, 3, 2, 4, 5))
+                        out = K.reshape(out, (batch_size, oh, ow, oc))
+                        return out
+
+                def compute_output_shape(self, input_shape):
+                    if len(input_shape) != 4:
+                        raise ValueError('Inputs should have rank ' +
+                                        str(4) +
+                                        '; Received input shape:', str(input_shape))
+
+                    if self.data_format == 'channels_first':
+                        height = input_shape[2] * self.size[0] if input_shape[2] is not None else None
+                        width = input_shape[3] * self.size[1] if input_shape[3] is not None else None
+                        channels = input_shape[1] // self.size[0] // self.size[1]
+
+                        if channels * self.size[0] * self.size[1] != input_shape[1]:
+                            raise ValueError('channels of input and size are incompatible')
+
+                        return (input_shape[0],
+                                channels,
+                                height,
+                                width)
+
+                    elif self.data_format == 'channels_last':
+                        height = input_shape[1] * self.size[0] if input_shape[1] is not None else None
+                        width = input_shape[2] * self.size[1] if input_shape[2] is not None else None
+                        channels = input_shape[3] // self.size[0] // self.size[1]
+
+                        if channels * self.size[0] * self.size[1] != input_shape[3]:
+                            raise ValueError('channels of input and size are incompatible')
+
+                        return (input_shape[0],
+                                height,
+                                width,
+                                channels)
+
+                def get_config(self):
+                    config = {'size': self.size,
+                            'data_format': self.data_format}
+                    base_config = super(PixelShuffler, self).get_config()
+
+                    return dict(list(base_config.items()) + list(config.items()))
 
         nnlib.PixelShuffler = PixelShuffler
         nnlib.SubpixelUpscaler = PixelShuffler
@@ -547,8 +597,52 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
         nnlib.CAInitializerMP = CAInitializerMP
 
 
-        '''
-        not implemented in plaidML
+        if backend == "plaidML":
+            class TileOP_ReflectionPadding2D(nnlib.PMLTile.Operation):
+                def __init__(self, input, w_pad, h_pad):
+                    if K.image_data_format() == 'channels_last':
+                        if input.shape.ndims == 4:
+                            H, W = input.shape.dims[1:3]
+                            if (type(H) == int and h_pad >= H) or \
+                                (type(W) == int and w_pad >= W):
+                                raise ValueError("Paddings must be less than dimensions.")
+
+                            c = """ function (I[B, H, W, C] ) -> (O) {{
+                                    WE = W + {w_pad}*2;
+                                    HE = H + {h_pad}*2;
+                                """.format(h_pad=h_pad, w_pad=w_pad)
+                            if w_pad > 0:
+                                c += """
+                                    LEFT_PAD [b, h, w , c : B, H, WE, C ] = =(I[b, h, {w_pad}-w,            c]), w < {w_pad} ;
+                                    HCENTER  [b, h, w , c : B, H, WE, C ] = =(I[b, h, w-{w_pad},            c]), w < W+{w_pad}-1 ;
+                                    RIGHT_PAD[b, h, w , c : B, H, WE, C ] = =(I[b, h, 2*W - (w-{w_pad}) -2, c]);
+                                    LCR = LEFT_PAD+HCENTER+RIGHT_PAD;
+                                """.format(h_pad=h_pad, w_pad=w_pad)
+                            else:
+                                c += "LCR = I;"
+
+                            if h_pad > 0:
+                                c += """
+                                    TOP_PAD   [b, h, w , c : B, HE, WE, C ] = =(LCR[b, {h_pad}-h,            w, c]), h < {h_pad};
+                                    VCENTER   [b, h, w , c : B, HE, WE, C ] = =(LCR[b, h-{h_pad},            w, c]), h < H+{h_pad}-1 ;
+                                    BOTTOM_PAD[b, h, w , c : B, HE, WE, C ] = =(LCR[b, 2*H - (h-{h_pad}) -2, w, c]);
+                                    TVB = TOP_PAD+VCENTER+BOTTOM_PAD;
+                                """.format(h_pad=h_pad, w_pad=w_pad)
+                            else:
+                                c += "TVB = LCR;"
+
+                            c += "O = TVB; }"
+
+                            inp_dims = input.shape.dims
+                            out_dims = (inp_dims[0], inp_dims[1]+h_pad*2, inp_dims[2]+w_pad*2, inp_dims[3])
+                        else:
+                            raise NotImplemented
+                    else:
+                        raise NotImplemented
+
+                    super(TileOP_ReflectionPadding2D, self).__init__(c, [('I', input) ],
+                            [('O', nnlib.PMLTile.Shape(input.shape.dtype, out_dims ) )])
+
         class ReflectionPadding2D(keras.layers.Layer):
             def __init__(self, padding=(1, 1), **kwargs):
                 self.padding = tuple(padding)
@@ -561,11 +655,46 @@ NLayerDiscriminator = nnlib.NLayerDiscriminator
 
             def call(self, x, mask=None):
                 w_pad,h_pad = self.padding
-                return tf.pad(x, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
+                if "tensorflow" in backend:
+                    return K.tf.pad(x, [[0,0], [h_pad,h_pad], [w_pad,w_pad], [0,0] ], 'REFLECT')
+                elif backend == "plaidML":
+                    return TileOP_ReflectionPadding2D.function(x, self.padding[0], self.padding[1])
+                else:
+                    if K.image_data_format() == 'channels_last':
+                        if x.shape.ndims == 4:
+                            w = K.concatenate ([ x[:,:,w_pad:0:-1,:],
+                                                x,
+                                                x[:,:,-2:-w_pad-2:-1,:] ], axis=2 )
+                            h = K.concatenate ([ w[:,h_pad:0:-1,:,:],
+                                                w,
+                                                w[:,-2:-h_pad-2:-1,:,:] ], axis=1 )
+                            return h
+                        else:
+                            raise NotImplemented
+                    else:
+                        raise NotImplemented
+
         nnlib.ReflectionPadding2D = ReflectionPadding2D
-        '''
 
+        class Conv2D():
+            def __init__ (self, *args, **kwargs):
+                self.reflect_pad = False
+                padding = kwargs.get('padding','')
+                if padding == 'zero':
+                    kwargs['padding'] = 'same'
+                if padding == 'reflect':
+                    kernel_size = kwargs['kernel_size']
+                    if (kernel_size % 2) == 1:
+                        self.pad = (kernel_size // 2,)*2
+                        kwargs['padding'] = 'valid'
+                        self.reflect_pad = True
+                self.func = keras.layers.Conv2D (*args, **kwargs)
 
+            def __call__(self,x):
+                if self.reflect_pad:
+                    x = ReflectionPadding2D( self.pad ) (x)
+                return self.func(x)
+        nnlib.Conv2D = Conv2D
 
     @staticmethod
     def import_keras_contrib(device_config):
@@ -860,7 +989,7 @@ class CAInitializerMPSubprocessor(Subprocessor):
 
     #override
     def on_clients_initialized(self):
-        io.progress_bar ("Processing", len (self.idx_shapes_list))
+        io.progress_bar ("Initializing", len (self.idx_shapes_list))
 
     #override
     def on_clients_finalized(self):
