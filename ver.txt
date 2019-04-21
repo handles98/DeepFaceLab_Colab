@@ -1,2 +1,243 @@
-DEL:20190415
-Build:20190407
+DEL:20190421
+Build:20190421
+主要更新功能：Fanseg，遮挡物处理模型。
+
+== 04.21.2019 ==
+
+SAE: 
+fix multiscale decoder.  
+修复多尺度解码器
+training with liae archi should be restarted
+使用liae训练的模型必须重新来过
+
+changed help for 'sort by yaw' option:
+修改sort by yaw的帮助信息
+NN will not learn src face directions that don't match dst face directions. Do not use if the dst face has hair that covers the jaw.
+神经网络不会学习与dst面部方向不匹配的src面部。 如果dst脸部的头发覆盖下颚，请不要使用。
+
+== 04.20.2019 ==
+
+fixed work with NVIDIA cards in TCC mode
+修复N卡 TCC模式
+
+Converter: improved FAN-x masking mode.
+转换器：优化Fan-x 遮罩模式
+Now it excludes face obstructions such as hair, fingers, glasses, microphones, etc.
+现在能排除那些脸部遮挡了，比如头发，手指，眼镜，麦克风，diao 等！
+
+example https://i.imgur.com/x4qroPp.gifv
+演示：https://i.imgur.com/x4qroPp.gifv
+It works only for full face models, because there were glitches in half face version.
+新功能仅适用于全脸模型，因为半脸版本有毛刺。
+
+Fanseg is trained by using manually refined by MaskEditor >3000 various faces with obstructions.
+Fanseg通过使用MaskEditor> 3000手工精制的各种面部障碍物进行训练而成。
+
+Accuracy of fanseg to handle complex obstructions can be improved by adding more samples to dataset, but I have no time for that :(
+通过向数据集添加更多样本可以提高fanseg处理复杂障碍物的准确性，但我没有时间:(没有时间：
+
+Dataset is located in the official mega.nz folder.
+训练的数据集就在官方mega.nz文件夹中。
+
+If your fake has some complex obstructions that incorrectly recognized by fanseg,
+如果你换脸的时候有一些复杂的障碍物被fanseg错误识别，
+
+you can add manually masked samples from your fake to the dataset
+你可以手动将你的样本添加到数据集中
+
+and retrain it by using --model FANSEG argument in bat file. Read more info in dataset archive.
+然后通过在BAT文件中添加 --moel FANSEG 参数重新训练。更多内容请看数据集。
+
+Minimum recommended VRAM is 6GB and batch size 24 to train fanseg.
+训练fanseg的推荐配置为，显存6GB，BS 24
+Result model\FANSeg_256_full_face.h5 should be placed to DeepFacelab\facelib\ folder
+训练完后需要将model\FANSeg_256_full_face.h5 放到DeepFacelab\facelib\替换同名文件。
+
+Google Colab now works on Tesla T4 16GB.
+谷歌云笔记本现在的配置是Tesla T4 16GB
+With Google Colaboratory you can freely train your model for 12 hours per session, then reset session and continue with last save.
+你可以使用谷歌云笔记本训练模型，但是回话会最多只能持续12小时，然后环境会充值。
+
+== 04.07.2019 == 
+
+Extractor: added warning if aligned folder contains files that will be deleted.
+
+Converter subprocesses limited to maximum 6
+
+== 04.06.2019 ==
+
+added experimental mask editor. 
+It is created to improve FANSeg model, but you can try to use it in fakes.
+But remember: it does not guarantee quality improvement.
+usage:
+run 5.4) data_dst mask editor.bat
+edit the mask of dst faces with obstructions
+train SAE either with 'learn mask' or with 'style values'
+Screenshot of mask editor: https://i.imgur.com/SaVpxVn.jpg
+result of training and merging using edited mask: https://i.imgur.com/QJi9Myd.jpg
+Complex masks are harder to train.
+
+SAE: 
+previous SAE model will not work with this update.
+Greatly decreased chance of model collapse. 
+Increased model accuracy.
+Residual blocks now default and this option has been removed.
+Improved 'learn mask'.
+Added masked preview (switch by space key)
+
+Converter: 
+fixed rct/lct in seamless mode
+added mask mode (6) learned*FAN-prd*FAN-dst
+
+changed help message for pixel loss:
+Pixel loss may help to enhance fine details and stabilize face color. Use it only if quality does not improve over time.
+
+fixed ctrl-c exit in no-preview mode
+
+== 03.31.2019 ==
+
+Converter: fix blur region of seamless.
+
+== 03.30.2019 == 
+
+fixed seamless face jitter
+removed options Suppress seamless jitter, seamless erode mask modifier.
+seamlessed face now properly uses blur modifier
+added option 'FAN-prd&dst' - using multiplied FAN prd and dst mask,
+
+== 03.29.2019 ==
+
+Converter: refactorings and optimizations
+added new option
+Apply super resolution? (y/n skip:n) : Enhance details by applying DCSCN network.
+before/after gif - https://i.imgur.com/jJA71Vy.gif
+
+== 03.26.2019 ==
+
+SAE: removed lightweight encoder.
+optimizer mode now can be overriden each run
+
+Trainer: the loss line now shows the average loss values after saving
+
+Converter: fixed bug with copying files without faces.
+
+XNViewMP : updated version
+
+fixed cut video.bat for paths with spaces
+
+== 03.24.2019 ==
+
+old SAE model will not work with this update.
+
+Fixed bug when SAE can be collapsed during a time. 
+
+SAE: removed CA weights and encoder/decoder dims.
+
+added new options:
+
+Encoder dims per channel (21-85 ?:help skip:%d) 
+More encoder dims help to recognize more facial features, but require more VRAM. You can fine-tune model size to fit your GPU.
+
+Decoder dims per channel (11-85 ?:help skip:%d) 
+More decoder dims help to get better details, but require more VRAM. You can fine-tune model size to fit your GPU.
+
+Add residual blocks to decoder? (y/n, ?:help skip:n) : 
+These blocks help to get better details, but require more computing time.
+
+Remove gray border? (y/n, ?:help skip:n) : 
+Removes gray border of predicted face, but requires more computing resources.
+
+
+Extract images from video: added option
+Output image format? ( jpg png ?:help skip:png ) : 
+PNG is lossless, but produces images with size x10 larger than JPG.
+JPG extraction is faster, especially on HDD instead of SSD.
+
+== 03.21.2019 ==
+
+OpenCL build: fixed, now works on most video cards again.
+
+old SAE model will not work with this update.
+Fixed bug when SAE can be collapsed during a time
+
+Added option
+Use CA weights? (y/n, ?:help skip: n ) :
+Initialize network with 'Convolution Aware' weights. 
+This may help to achieve a higher accuracy model, but consumes time at first run.
+
+Extractor:
+removed DLIB extractor
+greatly increased accuracy of landmarks extraction, especially with S3FD detector, but speed of 2nd pass now slower.
+From this point on, it is recommended to use only the S3FD detector.
+before https://i.imgur.com/SPGeJCm.gif
+after https://i.imgur.com/VmmAm8p.gif
+
+Converter: added new option to choose type of mask for full-face models.
+
+Mask mode: (1) learned, (2) dst, (3) FAN-prd, (4) FAN-dst (?) help. Default - 1 : 
+Learned ?Learned mask, if you choose option 'Learn mask' in model. The contours are fairly smooth, but can be wobbly.
+Dst ?raw mask from dst face, wobbly contours.
+FAN-prd ?mask from pretrained FAN model from predicted face. Very smooth not shaky countours.
+FAN-dst ?mask from pretrained FAN model from dst face. Very smooth not shaky countours.
+Advantages of FAN mask: you can get a not wobbly shaky without learning it by model.
+Disadvantage of FAN mask: may produce artifacts on the contours if the face is obstructed.
+
+== 03.13.2019 ==
+
+SAE: added new option
+
+Optimizer mode? ( 1,2,3 ?:help skip:1) : 
+this option only for NVIDIA cards. Optimizer mode of neural network.
+1 - default.
+2 - allows you to train x2 bigger network, uses a lot of RAM.
+3 - allows you to train x3 bigger network, uses huge amount of RAM and 30% slower.
+
+Epoch term renamed to iteration term.
+
+added showing timestamp in string of training in console
+
+== 03.11.2019 ==
+
+CUDA10.1AVX users - update your video drivers from geforce.com site
+
+face extractor:
+
+added new extractor S3FD - more precise, produces less false-positive faces, accelerated by AMD/IntelHD GPU (while MT is not)
+
+speed of 1st pass with DLIB significantly increased
+
+decreased amount of false-positive faces for all extractors
+
+manual extractor: added 'h' button to hide the help information
+
+fix DFL conflict with system python installation
+
+removed unwanted tensorflow info from console log
+
+updated manual_ru
+
+== 03.07.2019 ==
+
+fixes
+
+upgrade to python 3.6.8
+
+Reorganized structure of DFL folder. Removed unnecessary files and other trash.
+
+Current available builds now:
+
+DeepFaceLabCUDA9.2SSE - for NVIDIA cards up to GTX10x0 series and any 64-bit CPU
+DeepFaceLabCUDA10.1AVX - for NVIDIA cards up to RTX and CPU with AVX instructions support
+DeepFaceLabOpenCLSSE - for AMD/IntelHD cards and any 64-bit CPU
+
+== 03.04.2019 == 
+
+added
+4.2.other) data_src util recover original filename.bat
+5.3.other) data_dst util recover original filename.bat
+
+== 03.03.2019 ==
+
+Convertor: fix seamless
+
+== for older changelog see github page ==
