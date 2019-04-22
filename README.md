@@ -1,3 +1,6 @@
+#Good News
+Colab upgraded from the original K80 12G to T4 16G, faster, more VRAM！  
+
 # Overview
 The purpose of this project is to provide a way to run ***DeepFaceLab*** for free.  
 When you have learned how to use DFL, Perhaps the biggest limitation for you is the Computer performance.  
