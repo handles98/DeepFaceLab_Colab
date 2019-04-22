@@ -13,7 +13,7 @@ This rep just add the .ipynb file ,makes it simpler!
 No need to copy, zip, unzip multiple times, no need to worry about data loss. 
 
 # Features
-* You can use tesla k80 for free
+* You can use tesla T4 for free
 * Your data is saved in the google Drive
 * You can preview the results online,No need to download
 * Colaboratory requires interaction when in use. The system may stop long-running background calculations
