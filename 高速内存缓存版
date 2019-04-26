@@ -1,0 +1,536 @@
+{
+  "nbformat": 4,
+  "nbformat_minor": 0,
+  "metadata": {
+    "colab": {
+      "name": "DeepFaceLab_Colab_zh-cn.ipynb",
+      "version": "0.3.2",
+      "provenance": [],
+      "collapsed_sections": [],
+      "toc_visible": true,
+      "include_colab_link": true
+    },
+    "kernelspec": {
+      "name": "python3",
+      "display_name": "Python 3"
+    },
+    "accelerator": "GPU"
+  },
+  "cells": [
+    {
+      "cell_type": "markdown",
+      "metadata": {
+        "id": "view-in-github",
+        "colab_type": "text"
+      },
+      "source": [
+        "<a href=\"https://colab.research.google.com/github/dream80/DeepFaceLab_Colab/blob/master/DeepFaceLab_Colab_zh_cn.ipynb\" target=\"_parent\"><img src=\"https://colab.research.google.com/assets/colab-badge.svg\" alt=\"Open In Colab\"/></a>"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "KWQMLYlFrTXz",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 简介\n",
+        "\n",
+        "无需多说，一路运行即可！\n",
+        "\n",
+        "此脚本由**托尼是塔克**创建，仅用于学习，请勿商用，请勿用于非法用途，否者后果自负。"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "ldpC3PjRrYYh",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 第一步 准备好workspace\n",
+        "这一部你可以选着两种方式\n",
+        "1. 使用默认的workspace，你无需自己上传，仅用于熟悉操作。\n",
+        "2. 通过Google Drive （谷歌云盘）上传自己的workspace到指定目录。\n",
+        "\n",
+        "\n",
+        "注意：谷歌网址现在都需要“科学上网”才能访问。"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "D7toZxhT4J9W",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#挂载谷歌云盘\n",
+        "#点击链接授权，复制授权码，填入框框，然后回车。\n",
+        "\n",
+        "from google.colab import drive\n",
+        "\n",
+        "drive.mount('/content/drive', force_remount=True)"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "rDUpbJYR54dw",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#创建DeepFaceLab目录，并且进入目录\n",
+        "%cd /content/drive/My Drive/\n",
+        "!mkdir DeepFaceLab\n",
+        "%cd /content/drive/My Drive/DeepFaceLab/"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "cNsq0I98KvHl",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 下面的1和2 不用同时点，二选一！！！！\n",
+        "# 1. 练手可以使用这一行diam，直接git clone一个workspace\n",
+        "!git clone https://github.com/dream80/DFLWorkspace.git workspace"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "w6ViQYB_Cupc",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 2.正常情况肯定是通过谷歌云盘上传自己的workspace，上传前压缩一下，然后用下面的命令解压。\n",
+        "# 注意一定要上传到DeepFaceLab目录下。\n",
+        "!unzip workspace.zip\n",
+        "\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "yA4nziLPtAf9",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "#第二步 安装DeepFaceLab\n"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "4CbWbLzHzqTQ",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 获取DFL源代码v1.1稳定版\n",
+        "\n",
+        "!git clone -b v1.1 https://github.com/dream80/DeepFaceLab_Colab.git\n",
+        "\n",
+        "# 获取最新代代码，用这条命令，有风险。\n",
+        "#!git clone https://github.com/dream80/DeepFaceLab_Colab.git"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "5MzbdSPEzsF6",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 进入DeepFaceLab_Colab目录\n",
+        "%cd /content/drive/My Drive/DeepFaceLab/DeepFaceLab_Colab\n",
+        "\n",
+        "#获取最新源代码\n",
+        "#!git pull\n"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "yd11UhiUvUfP",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 安装Python依赖\n",
+        "!pip install -r requirements_colab.txt\n",
+        "!pip install --upgrade scikit-image"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "9G9s5gJrty-x",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 第三步. 提取脸部"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "97VTmSmkEk2j",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 确保路径正确，进入DeepFaceLab_Colab\n",
+        "\n",
+        "%cd /content/drive/My Drive/DeepFaceLab/DeepFaceLab_Colab"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "w8qxq7jAxGrQ",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Src 视频转图片\n",
+        "\n",
+        "!python main.py videoed extract-video --input-file ../workspace/data_src.mp4 --output-dir ../workspace/data_src/"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "hpTukPbSxbGP",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Src 提取脸部图片\n",
+        "\n",
+        "!python main.py extract --input-dir ../workspace/data_src --output-dir ../workspace/data_src/aligned --detector s3fd --debug-dir ../workspace/data_src/aligned_debug"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "kWQsUODU8Ftg",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Src排序，可以通过谷歌云盘查看结果，删除不良图片\n",
+        "\n",
+        "!python main.py sort --input-dir ../workspace/data_src/aligned --by hist"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "z35vHpqaw8t-",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Dst视频转图片\n",
+        "\n",
+        "!python main.py videoed extract-video --input-file ../workspace/data_dst.mp4 --output-dir ../workspace/data_dst/"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "EbAY9bJvxDBK",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Dst提取脸部图片\n",
+        "\n",
+        "!python main.py extract --input-dir ../workspace/data_dst --output-dir ../workspace/data_dst/aligned --detector s3fd --debug-dir ../workspace/data_dst/aligned_debug"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "PJs_yo-F8IBS",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#Dst排序，可以通过谷歌云盘查看结果，删除不良图片\n",
+        "\n",
+        "!python main.py sort --input-dir ../workspace/data_dst/aligned --by hist"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "QxO1kNO_uRTF",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 第四步. 训练模型\n",
+        "\n",
+        "\n",
+        "*  支持H128,SAE,DF, LIAEF128等模型，根据自己的情况选择模型。\n",
+        "*  训练开始是需要配置参数，记得开启预览，其他参数根据自己情况选择，使用默认参数的话直接回车即可。\n",
+        "*  不想训练了可以点击停止，停止时会抛出异常，但是没什么关系。下次可以继续训练\n",
+        "*  如果想要查看history ，先停止训练，然后点击下面第三段代码"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "7n3ZpkQd-dZj",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# 确保路径正确，进入DeepFaceLab_Colab\n",
+        "\n",
+        "%cd /content/drive/My Drive/DeepFaceLab/DeepFaceLab_Colab"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "MX9pNbD8-jNA",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "**下面是启动模型训练的脚本，不要全部点，只要点其中一个。默认使用第一个SAE**"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "NvP37RbjsN8V",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# Running trainer. SAE \n",
+        "\n",
+        "!python main.py train --training-data-src-dir ../workspace/data_src/aligned --training-data-dst-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model SAE --no-preview"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "JOxI3qTaxr4x",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# Running trainer  H128\n",
+        "\n",
+        "!python main.py train --training-data-src-dir ../workspace/data_src/aligned --training-data-dst-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model H128 --no-preview"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "HkjlaeiO0wFc",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# Running trainer. DF \n",
+        "\n",
+        "!python main.py train --training-data-src-dir ../workspace/data_src/aligned --training-data-dst-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model DF --no-preview"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "nEUQhEc21KEV",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "# Running trainer. LIAEF128 \n",
+        "\n",
+        "!python main.py train --training-data-src-dir ../workspace/data_src/aligned --training-data-dst-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model LIAEF128 --no-preview"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "oVfZpBR00gBG",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "**模型预览请使用独立的colab脚本：**\n",
+        "https://github.com/dream80/DeepFaceLab_Colab/blob/master/ViewLastHistory.ipynb\n"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "m2Ba96cVuS0K",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 第五步. 转换输出\n",
+        "\n",
+        "默认使用SAE进行转换，如果需要其他模型，请修改命令中的参数。\n",
+        "\n",
+        "比如将 --model SAE 修改为 --model H128"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "__aUSMa80-_M",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#用src中的脸替换dst的脸 \n",
+        "!python main.py convert --input-dir ../workspace/data_dst --output-dir ../workspace/data_dst/merged --aligned-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model SAE"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "symb8EIc1Csf",
+        "colab_type": "code",
+        "cellView": "both",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#把替换好的图片转换成视频\n",
+        "\n",
+        "!python main.py videoed video-from-sequence --input-dir ../workspace/data_dst/merged --output-file ../workspace/result.mp4 --reference-file ../workspace/data_dst.mp4"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "cVfp8xbY5ykL",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "#第六步. 继续训练\n",
+        "当你第二次开始训练，或者掉线之后继续训练时并不需要执行上面所有的步骤。只需要下面简单的几个步骤。\n",
+        "1. 挂载云盘\n",
+        "2. 安装依赖\n",
+        "3. 开始训练"
+      ]
+    },
+    {
+      "metadata": {
+        "id": "veL_8afb6WcP",
+        "colab_type": "code",
+        "colab": {}
+      },
+      "cell_type": "code",
+      "source": [
+        "#挂载谷歌云盘\n",
+        "#点击链接授权，复制授权码，填入框框，然后回车。\n",
+        "\n",
+        "from google.colab import drive\n",
+        "drive.mount('/content/drive', force_remount=True)\n",
+        "\n",
+        "# 进入DeepFaceLab_Colab目录\n",
+        "%cd /content/drive/My Drive/DeepFaceLab/DeepFaceLab_Colab\n",
+        "\n",
+        "# 安装Python依赖\n",
+        "!pip install -r requirements_colab.txt\n",
+        "!pip install --upgrade scikit-image\n",
+        "\n",
+        "# 开始训练SAE ，如果是其他模型，修改后面的参数即可。\n",
+        "\n",
+        "!python main.py train --training-data-src-dir ../workspace/data_src/aligned --training-data-dst-dir ../workspace/data_dst/aligned --model-dir ../workspace/model --model SAE --no-preview"
+      ],
+      "execution_count": 0,
+      "outputs": []
+    },
+    {
+      "metadata": {
+        "id": "5H85SsIW1PI3",
+        "colab_type": "text"
+      },
+      "cell_type": "markdown",
+      "source": [
+        "# 其他\n",
+        "\n",
+        " 谷歌云地址：https://drive.google.com/drive/my-drive\n",
+        "\n",
+        " 作者邮箱 ：wpgdream@gmail.com\n",
+        " \n",
+        " 使用教程：http://deepfakescn.com\n",
+        " \n",
+        " 工具脚本：https://github.com/dream80/DeepFaceLab_Colab/blob/master/Tools.ipynb\n",
+        " \n",
+        " \n",
+        "不求别的，只求在github给个小星星^_^\n",
+        "\n",
+        "https://github.com/dream80/DeepFaceLab_Colab\n",
+        "\n",
+        "右上角star 谢谢!!!"
+      ]
+    }
+  ]
+}
